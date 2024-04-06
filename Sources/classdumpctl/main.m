@@ -106,9 +106,6 @@ static CDClassModel *safelyGenerateModelForClass(Class const cls, IMP const blan
     Method const initializeMthd = class_getClassMethod(cls, @selector(initialize));
     method_setImplementation(initializeMthd, blankIMP);
     
-    if (class_getInstanceMethod(cls, @selector(doesNotRecognizeSelector:)) == NULL) {
-        return nil;
-    }
     return [CDClassModel modelWithClass:cls];
 }
 
