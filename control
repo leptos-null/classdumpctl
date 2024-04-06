@@ -1,0 +1,9 @@
+Package: null.leptos.classdumpctl
+Name: classdumpctl
+Version: 0.0.1
+Architecture: iphoneos-arm
+Description: Dump Objective-C class and protocol headers
+Maintainer: Leptos <leptos.0.null@gmail.com>
+Author: Leptos <leptos.0.null@gmail.com>
+Section: System
+Tag: role::hacker
