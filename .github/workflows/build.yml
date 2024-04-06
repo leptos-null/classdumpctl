@@ -1,0 +1,32 @@
+name: Build
+
+on:
+  push
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Checkout theos/theos
+        uses: actions/checkout@v4
+        with:
+          repository: theos/theos
+          submodules: recursive
+          path: theos
+
+      - name: Build with Theos
+        env:
+          THEOS: theos
+        run: |
+          # we probably don't have `ldid`, so skip codesign
+          # https://github.com/theos/theos/pull/786
+          make 'TARGET_CODESIGN = '
+
+      - name: Build with Swift
+        run: |
+          swift build
