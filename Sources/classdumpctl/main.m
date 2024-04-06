@@ -259,11 +259,14 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     
+    CDGenerationOptions *const generationOptions = [CDGenerationOptions new];
+    generationOptions.stripSynthesized = YES;
+    
     IMP const blankIMP = imp_implementationWithBlock(^{ }); // returns void, takes no parameters
     
     // just doing this once before we potentially delete some class initializers
-    [[CDClassModel modelWithClass:NSClassFromString(@"NSObject")] linesWithComments:YES synthesizeStrip:YES];
-    [[CDProtocolModel modelWithProtocol:NSProtocolFromString(@"NSObject")] linesWithComments:YES synthesizeStrip:YES];
+    [[CDClassModel modelWithClass:NSClassFromString(@"NSObject")] semanticLinesWithOptions:generationOptions];
+    [[CDProtocolModel modelWithProtocol:NSProtocolFromString(@"NSObject")] semanticLinesWithOptions:generationOptions];
     
     if (hasImageRequests && (outputDir == nil)) {
         fprintf(stderr, "-o/--output required to dump all classes in an image\n");
@@ -307,7 +310,7 @@ int main(int argc, char *argv[]) {
                 }
                 Class const cls = objc_getClass(classNames[classIndex]);
                 CDClassModel *model = safelyGenerateModelForClass(cls, blankIMP);
-                CDSemanticString *semanticString = [model semanticLinesWithComments:NO synthesizeStrip:YES];
+                CDSemanticString *semanticString = [model semanticLinesWithOptions:generationOptions];
                 NSString *lines = linesForSemanticStringColorMode(semanticString, outputColorMode, NO);
                 NSString *headerName = [NSStringFromClass(cls) stringByAppendingPathExtension:@"h"];
                 
@@ -335,7 +338,7 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Unable to message class named %s\n", requestClassName.UTF8String);
             continue;
         }
-        CDSemanticString *string = [model semanticLinesWithComments:NO synthesizeStrip:YES];
+        CDSemanticString *string = [model semanticLinesWithOptions:generationOptions];
         NSString *lines = linesForSemanticStringColorMode(string, outputColorMode, isOutputTTY);
         NSData *encodedLines = [lines dataUsingEncoding:NSUTF8StringEncoding];
         
@@ -356,7 +359,7 @@ int main(int argc, char *argv[]) {
             continue;
         }
         CDProtocolModel *model = [CDProtocolModel modelWithProtocol:prcl];
-        CDSemanticString *string = [model semanticLinesWithComments:NO synthesizeStrip:YES];
+        CDSemanticString *string = [model semanticLinesWithOptions:generationOptions];
         NSString *lines = linesForSemanticStringColorMode(string, outputColorMode, isOutputTTY);
         NSData *encodedLines = [lines dataUsingEncoding:NSUTF8StringEncoding];
         
@@ -481,7 +484,7 @@ int main(int argc, char *argv[]) {
                         if (model == nil) {
                             continue;
                         }
-                        CDSemanticString *semanticString = [model semanticLinesWithComments:NO synthesizeStrip:YES];
+                        CDSemanticString *semanticString = [model semanticLinesWithOptions:generationOptions];
                         
                         NSString *lines = linesForSemanticStringColorMode(semanticString, outputColorMode, NO);
                         NSString *headerName = [NSStringFromClass(cls) stringByAppendingPathExtension:@"h"];
