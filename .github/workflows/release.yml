@@ -1,0 +1,77 @@
+# Based on
+# https://github.com/theos/sdks/blob/ca52092/.github/workflows/release.yml
+# Also help from
+# https://github.com/NightwindDev/Tweak-Tutorial/blob/d39b124/oldabi.md#compiling-via-github-actions
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    # needed to be able to create a Release
+    permissions:
+      contents: write
+    runs-on: macos-14
+    env:
+      THEOS: theos
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Checkout theos/theos
+        uses: actions/checkout@v4
+        with:
+          repository: theos/theos
+          submodules: recursive
+          path: ${{ env.THEOS }}
+
+      - name: Install package depenencies
+        run: |
+          brew install make xz ldid
+
+      - name: Build iOS package (default)
+        run: |
+          gmake clean package FINALPACKAGE=1
+
+      - name: Build iOS package (rootless)
+        run: |
+          gmake clean package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
+
+      - name: Build macOS binary (default)
+        run: |
+          xcodebuild -workspace .swiftpm/xcode/package.xcworkspace \
+            -scheme classdumpctl \
+            -config Release \
+            -destination 'generic/platform=macOS' \
+            -derivedDataPath XcodeDerivedData \
+            -quiet
+          mv XcodeDerivedData/Build/Products/Release/classdumpctl classdumpctl-mac
+
+      - name: Build macOS binary (Mac Catalyst)
+        run: |
+          # I don't know how to build for Mac Catalyst without using Xcode.
+          # the triple 'arm64-apple-ios-macabi' errors out when
+          # swift-build transforms and passes the value to clang
+          #   clang: error: invalid version number in '-target arm64-apple-ios13.0-macabi'
+          xcodebuild -workspace .swiftpm/xcode/package.xcworkspace \
+            -scheme classdumpctl \
+            -config Release \
+            -destination 'generic/platform=macOS,variant=Mac Catalyst' \
+            -derivedDataPath XcodeDerivedData \
+            -quiet
+          mv XcodeDerivedData/Build/Products/Release-maccatalyst/classdumpctl classdumpctl-maccatalyst
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="auto-${GITHUB_SHA:0:7}"
+          gh release create "${TAG}" --draft \
+            --title "Automatic Release" \
+            --target "${GITHUB_SHA}" \
+            packages/*.deb classdumpctl-mac classdumpctl-maccatalyst
