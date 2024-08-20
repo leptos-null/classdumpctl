@@ -1,16 +1,15 @@
 TARGET := iphone:clang:latest:8.0
+INSTALL_TARGET_PROCESSES := SpringBoard
 ARCHS := arm64
 
 include $(THEOS)/makefiles/common.mk
 
-TOOL_NAME = classdumpctl
+TWEAK_NAME = ClassDumpTweak
 
-classdumpctl_FILES = Sources/classdumpctl/main.m
-classdumpctl_FILES += $(wildcard ClassDumpRuntime/Sources/ClassDumpRuntime/ClassDump/*/*.m)
-classdumpctl_FILES += $(wildcard ClassDumpRuntime/Sources/ClassDumpRuntime/ClassDump/*/*/*.m)
+ClassDumpTweak_FILES = Tweak.x
+ClassDumpTweak_FILES += $(wildcard ClassDumpRuntime/Sources/ClassDumpRuntime/ClassDump/*/*.m)
+ClassDumpTweak_FILES += $(wildcard ClassDumpRuntime/Sources/ClassDumpRuntime/ClassDump/*/*/*.m)
 
-classdumpctl_CFLAGS = -fobjc-arc -I ClassDumpRuntime/Sources/ClassDumpRuntime/include
-classdumpctl_CODESIGN_FLAGS = -Sentitlements.plist
-classdumpctl_INSTALL_PATH = /usr/local/bin
+ClassDumpTweak_CFLAGS = -fobjc-arc -I ClassDumpRuntime/Sources/ClassDumpRuntime/include
 
-include $(THEOS_MAKE_PATH)/tool.mk
+include $(THEOS_MAKE_PATH)/tweak.mk
