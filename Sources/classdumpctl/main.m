@@ -18,6 +18,7 @@ typedef NS_ENUM(NSUInteger, CDOutputColorMode) {
     CDOutputColorModeDefault,
     CDOutputColorModeNever,
     CDOutputColorModeAlways,
+    CDOutputColorModeHtmlHljs,
     
     CDOutputColorModeCaseCount
 };
@@ -36,9 +37,10 @@ static void printUsage(const char *progname) {
            "                               the specified directory, otherwise all classes found\n"
            "                               are written to this directory at the top level\n"
            "  -m <m>, --color=<m>        Set color settings, one of the below\n"
-           "                               default: color output only if output is to a TTY\n"
+           "                               default: color output using ASNI color escapes only if output is to a TTY\n"
            "                               never: no output is colored\n"
-           "                               always: output to TTYs, pipes, and files are colored\n"
+           "                               always: output to TTYs, pipes, and files are colored using ASNI color escapes\n"
+           "                               html-hljs: output to TTYs, pipes, and files are in HTML format annotated with hljs classes\n"
            "  -i <p>, --image=<p>        Reference the mach-o image at path\n"
            "                               by default, dump all classes in this image\n"
            "                               otherwise may specify --class or --protocol\n"
@@ -183,6 +185,8 @@ static NSString *linesForSemanticStringColorMode(CDSemanticString *const semanti
         case CDOutputColorModeAlways:
             shouldColor = YES;
             break;
+        case CDOutputColorModeHtmlHljs:
+            return hljsHtmlForSemanticString(semanticString);
         default:
             NSCAssert(NO, @"Unknown case: %lu", (unsigned long)colorMode);
             break;
@@ -236,8 +240,14 @@ int main(int argc, char *argv[]) {
                     outputColorMode = CDOutputColorModeDefault;
                 } else if (strcmp(stringyOption, "never") == 0) {
                     outputColorMode = CDOutputColorModeNever;
+                } else if (strcmp(stringyOption, "none") == 0) { // alias
+                    outputColorMode = CDOutputColorModeNever;
                 } else if (strcmp(stringyOption, "always") == 0) {
                     outputColorMode = CDOutputColorModeAlways;
+                } else if (strcmp(stringyOption, "ansi") == 0) { // alias
+                    outputColorMode = CDOutputColorModeAlways;
+                } else if (strcmp(stringyOption, "html-hljs") == 0) {
+                    outputColorMode = CDOutputColorModeHtmlHljs;
                 } else {
                     printUsage(argv[0]);
                     return 1;
