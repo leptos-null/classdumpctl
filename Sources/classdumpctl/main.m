@@ -19,6 +19,7 @@ typedef NS_ENUM(NSUInteger, CDOutputColorMode) {
     CDOutputColorModeNever,
     CDOutputColorModeAlways,
     CDOutputColorModeHtmlHljs,
+    CDOutputColorModeHtmlLsp,
     
     CDOutputColorModeCaseCount
 };
@@ -41,6 +42,7 @@ static void printUsage(const char *progname) {
            "                               never: no output is colored\n"
            "                               always: output to TTYs, pipes, and files are colored using ASNI color escapes\n"
            "                               html-hljs: output to TTYs, pipes, and files are in HTML format annotated with hljs classes\n"
+           "                               html-lsp: output to TTYs, pipes, and files are in HTML format annotated with LSP classes\n"
            "  -i <p>, --image=<p>        Reference the mach-o image at path\n"
            "                               by default, dump all classes in this image\n"
            "                               otherwise may specify --class or --protocol\n"
@@ -173,6 +175,50 @@ static NSString *hljsHtmlForSemanticString(CDSemanticString *const semanticStrin
     return build;
 }
 
+static NSString *lspHtmlForSemanticString(CDSemanticString *const semanticString) {
+    NSMutableString *build = [NSMutableString string];
+    // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#semanticTokenTypes
+    // https://github.com/leptos-null/LspHighlight/blob/5bce00c/Sources/LspHighlight/LspHighlight.swift#L285
+    [semanticString enumerateLongestEffectiveRangesUsingBlock:^(NSString *string, CDSemanticType type) {
+        NSString *htmlCls = nil;
+        switch (type) {
+            case CDSemanticTypeComment:
+                htmlCls = @"lsp-type-comment";
+                break;
+            case CDSemanticTypeKeyword:
+                htmlCls = @"lsp-type-keyword";
+                break;
+            case CDSemanticTypeVariable:
+                htmlCls = @"lsp-type-variable";
+                break;
+            case CDSemanticTypeRecordName:
+                htmlCls = @"lsp-type-struct";
+                break;
+            case CDSemanticTypeClass:
+                htmlCls = @"lsp-type-class";
+                break;
+            case CDSemanticTypeProtocol:
+                htmlCls = @"lsp-type-type";
+                break;
+            case CDSemanticTypeNumeric:
+                htmlCls = @"lsp-type-number";
+                break;
+            default:
+                break;
+        }
+        if (htmlCls != nil) {
+            [build appendString:@"<span class=\""];
+            [build appendString:htmlCls];
+            [build appendString:@"\">"];
+        }
+        [build appendString:sanitizeForHTML(string)];
+        if (htmlCls != nil) {
+            [build appendString:@"</span>"];
+        }
+    }];
+    return build;
+}
+
 static NSString *linesForSemanticStringColorMode(CDSemanticString *const semanticString, CDOutputColorMode const colorMode, BOOL const isOutputTTY) {
     BOOL shouldColor = NO;
     switch (colorMode) {
@@ -187,6 +233,8 @@ static NSString *linesForSemanticStringColorMode(CDSemanticString *const semanti
             break;
         case CDOutputColorModeHtmlHljs:
             return hljsHtmlForSemanticString(semanticString);
+        case CDOutputColorModeHtmlLsp:
+            return lspHtmlForSemanticString(semanticString);
         default:
             NSCAssert(NO, @"Unknown case: %lu", (unsigned long)colorMode);
             break;
@@ -248,6 +296,8 @@ int main(int argc, char *argv[]) {
                     outputColorMode = CDOutputColorModeAlways;
                 } else if (strcmp(stringyOption, "html-hljs") == 0) {
                     outputColorMode = CDOutputColorModeHtmlHljs;
+                } else if (strcmp(stringyOption, "html-lsp") == 0) {
+                    outputColorMode = CDOutputColorModeHtmlLsp;
                 } else {
                     printUsage(argv[0]);
                     return 1;
