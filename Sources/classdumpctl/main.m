@@ -109,6 +109,68 @@ static NSString *ansiEscapedColorThemeForSemanticString(CDSemanticString *const 
     return build;
 }
 
+static NSString *sanitizeForHTML(NSString *input) {
+    NSMutableString *build = [NSMutableString string];
+    // thanks to https://www.w3.org/International/questions/qa-escapes#use
+    NSDictionary<NSString *, NSString *> *replacementMap = @{
+        @"<": @"&lt;",
+        @">": @"&gt;",
+        @"&": @"&amp;",
+        @"\"": @"&quot;",
+        @"'": @"&apos;",
+    };
+    [input enumerateSubstringsInRange:NSMakeRange(0, input.length) options:NSStringEnumerationByComposedCharacterSequences usingBlock:^(NSString *substring, NSRange substringRange, NSRange enclosingRange, BOOL *stop) {
+        [build appendString:(replacementMap[substring] ?: substring)];
+    }];
+    return build;
+}
+
+static NSString *hljsHtmlForSemanticString(CDSemanticString *const semanticString) {
+    NSMutableString *build = [NSMutableString string];
+    // https://highlightjs.readthedocs.io/en/latest/css-classes-reference.html
+    [semanticString enumerateLongestEffectiveRangesUsingBlock:^(NSString *string, CDSemanticType type) {
+        NSString *htmlCls = nil;
+        switch (type) {
+            case CDSemanticTypeComment:
+                htmlCls = @"hljs-comment";
+                break;
+            case CDSemanticTypeKeyword:
+                htmlCls = @"hljs-keyword";
+                break;
+            case CDSemanticTypeVariable:
+                htmlCls = @"hljs-variable";
+                break;
+            case CDSemanticTypeRecordName:
+                htmlCls = @"hljs-type";
+                break;
+            case CDSemanticTypeClass:
+                // hljs-class is deprecated
+                htmlCls = @"hljs-title class";
+                break;
+            case CDSemanticTypeProtocol:
+                // hljs does not officially define `hljs-title.protocol`
+                // however `hljs-title` is still a class that themes should style
+                htmlCls = @"hljs-title protocol";
+                break;
+            case CDSemanticTypeNumeric:
+                htmlCls = @"hljs-number";
+                break;
+            default:
+                break;
+        }
+        if (htmlCls != nil) {
+            [build appendString:@"<span class=\""];
+            [build appendString:htmlCls];
+            [build appendString:@"\">"];
+        }
+        [build appendString:sanitizeForHTML(string)];
+        if (htmlCls != nil) {
+            [build appendString:@"</span>"];
+        }
+    }];
+    return build;
+}
+
 static NSString *linesForSemanticStringColorMode(CDSemanticString *const semanticString, CDOutputColorMode const colorMode, BOOL const isOutputTTY) {
     BOOL shouldColor = NO;
     switch (colorMode) {
