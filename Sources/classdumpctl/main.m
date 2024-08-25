@@ -24,6 +24,18 @@ typedef NS_ENUM(NSUInteger, CDOutputColorMode) {
     CDOutputColorModeCaseCount
 };
 
+typedef NS_ENUM(NSUInteger, CDOptionBoolValue) {
+    CDOptionBoolValueStripProtocolConformance = 0x100,
+    CDOptionBoolValueStripOverrides,
+    CDOptionBoolValueStripDuplicates,
+    CDOptionBoolValueStripSynthesized,
+    CDOptionBoolValueStripCtorMethod,
+    CDOptionBoolValueStripDtorMethod,
+    CDOptionBoolValueAddSymbolImageComments,
+    
+    CDOptionBoolValueCaseEnd
+};
+
 static void printUsage(const char *progname) {
     printf("Usage: %s [options]\n"
            "Options:\n"
@@ -51,6 +63,24 @@ static void printUsage(const char *progname) {
            "  -j <N>, --jobs=<N>         Allow N jobs at once\n"
            "                               only applicable when specified with -a/--dyld_shared_cache\n"
            "                               (defaults to number of processing core available)\n"
+           "\n"
+           "  --strip-protocol-conformance[=flag]    Hide properties and methods\n"
+           "                                           that are required by a protocol the type conforms to\n"
+           "                                           (defaults to false)\n"
+           "  --strip-overrides[=flag]               Hide properties and methods\n"
+           "                                           that are inherited from the class hierachy\n"
+           "                                           (defaults to false)\n"
+           "  --strip-duplicates[=flag]              Hide duplicate occurrences of a property or method\n"
+           "                                           (defaults to false)\n"
+           "  --strip-synthesized[=flag]             Hide methods and ivars that are synthesized from a property\n"
+           "                                           (defaults to true)\n"
+           "  --strip-ctor-method[=flag]             Hide `.cxx_construct` method\n"
+           "                                           (defaults to false)\n"
+           "  --strip-dtor-method[=flag]             Hide `.cxx_destruct` method\n"
+           "                                           (defaults to false)\n"
+           "  --add-symbol-comments[=flag]           Add comments above each eligible declaration\n"
+           "                                           with the symbol name and image path the object is found in\n"
+           "                                           (defaults to false)\n"
            "", progname);
 }
 
@@ -245,6 +275,33 @@ static NSString *linesForSemanticStringColorMode(CDSemanticString *const semanti
     return [semanticString string];
 }
 
+/// - Returns: `0` if `value` should be handled as `NO`,
+///            `1` if `value` should be handled as `YES`,
+///            `-1` if there's an error processing `value`
+static int parseOptargBool(const char *const value) {
+    // no value means enable the flag
+    if (value == NULL) { return 1; }
+    
+    if (strcmp(value, "0") == 0) { return 0; }
+    if (strcmp(value, "1") == 0) { return 1; }
+    if (strcmp(value, "no") == 0) { return 0; }
+    if (strcmp(value, "yes") == 0) { return 1; }
+    if (strcmp(value, "NO") == 0) { return 0; }
+    if (strcmp(value, "YES") == 0) { return 1; }
+    if (strcmp(value, "N") == 0) { return 0; }
+    if (strcmp(value, "Y") == 0) { return 1; }
+    if (strcmp(value, "n") == 0) { return 0; }
+    if (strcmp(value, "y") == 0) { return 1; }
+    if (strcmp(value, "off") == 0) { return 0; }
+    if (strcmp(value, "on") == 0) { return 1; }
+    if (strcmp(value, "false") == 0) { return 0; }
+    if (strcmp(value, "true") == 0) { return 1; }
+    if (strcmp(value, "FALSE") == 0) { return 0; }
+    if (strcmp(value, "TRUE") == 0) { return 1; }
+    
+    return -1;
+}
+
 int main(int argc, char *argv[]) {
     BOOL dyldSharedCacheFlag = NO;
     BOOL listFlag = NO;
@@ -255,6 +312,9 @@ int main(int argc, char *argv[]) {
     NSMutableArray<NSString *> *requestProtocolList = [NSMutableArray array];
     NSUInteger maxJobs = NSProcessInfo.processInfo.processorCount;
     
+    CDGenerationOptions *const generationOptions = [CDGenerationOptions new];
+    generationOptions.stripSynthesized = YES;
+    
     struct option const options[] = {
         { "dyld_shared_cache", no_argument,       NULL, 'a' },
         { "list",              no_argument,       NULL, 'l' },
@@ -264,12 +324,77 @@ int main(int argc, char *argv[]) {
         { "class",             required_argument, NULL, 'c' },
         { "protocol",          required_argument, NULL, 'p' },
         { "jobs",              required_argument, NULL, 'j' },
-        { NULL,                0,                 NULL,  0  }
+        
+        { "strip-protocol-conformance", optional_argument, NULL, CDOptionBoolValueStripProtocolConformance },
+        { "strip-overrides",            optional_argument, NULL, CDOptionBoolValueStripOverrides           },
+        { "strip-duplicates",           optional_argument, NULL, CDOptionBoolValueStripDuplicates          },
+        { "strip-synthesized",          optional_argument, NULL, CDOptionBoolValueStripSynthesized         },
+        { "strip-ctor-method",          optional_argument, NULL, CDOptionBoolValueStripCtorMethod          },
+        { "strip-dtor-method",          optional_argument, NULL, CDOptionBoolValueStripDtorMethod          },
+        { "add-symbol-comments",        optional_argument, NULL, CDOptionBoolValueAddSymbolImageComments   },
+        
+        { NULL, 0, NULL, 0 }
     };
     
+    int optionIndex = 0;
     int ch;
-    while ((ch = getopt_long(argc, argv, ":alo:m:i:c:p:j:", options, NULL)) != -1) {
+    while ((ch = getopt_long(argc, argv, ":alo:m:i:c:p:j:", options, &optionIndex)) != -1) {
         switch (ch) {
+            case CDOptionBoolValueStripProtocolConformance:
+            case CDOptionBoolValueStripOverrides:
+            case CDOptionBoolValueStripDuplicates:
+            case CDOptionBoolValueStripSynthesized:
+            case CDOptionBoolValueStripCtorMethod:
+            case CDOptionBoolValueStripDtorMethod:
+            case CDOptionBoolValueAddSymbolImageComments: {
+                struct option const *const option = options + optionIndex;
+                // test if we want to consume the next argument.
+                //   `optional_argument` only provides `optarg` if the
+                //   command line paramter is in the format "--name=value",
+                //   this code allows us to consume "--name" "value".
+                //   We have to validate "value", otherwise we might accidently
+                //   consume "--name" "--flag"
+                if (optarg == NULL && optind < argc) {
+                    int const parse = parseOptargBool(argv[optind]);
+                    // sucessful parse - consume next arg
+                    if (parse >= 0) {
+                        optarg = argv[optind];
+                        optind++;
+                    }
+                }
+                int const parse = parseOptargBool(optarg);
+                if (parse < 0) {
+                    fprintf(stderr, "Unknown value for --%s: '%s', expected 'yes', 'no'\n", option->name, optarg);
+                    return 1;
+                }
+                
+                BOOL const flag = (parse != 0);
+                switch (ch) {
+                    case CDOptionBoolValueStripProtocolConformance:
+                        generationOptions.stripProtocolConformance = flag;
+                        break;
+                    case CDOptionBoolValueStripOverrides:
+                        generationOptions.stripOverrides = flag;
+                        break;
+                    case CDOptionBoolValueStripDuplicates:
+                        generationOptions.stripDuplicates = flag;
+                        break;
+                    case CDOptionBoolValueStripSynthesized:
+                        generationOptions.stripSynthesized = flag;
+                        break;
+                    case CDOptionBoolValueStripCtorMethod:
+                        generationOptions.stripCtorMethod = flag;
+                        break;
+                    case CDOptionBoolValueStripDtorMethod:
+                        generationOptions.stripDtorMethod = flag;
+                        break;
+                    case CDOptionBoolValueAddSymbolImageComments:
+                        generationOptions.addSymbolImageComments = flag;
+                        break;
+                    default:
+                        break;
+                }
+            } break;
             case 'a':
                 dyldSharedCacheFlag = YES;
                 break;
@@ -328,9 +453,6 @@ int main(int argc, char *argv[]) {
         printUsage(argv[0]);
         return 1;
     }
-    
-    CDGenerationOptions *const generationOptions = [CDGenerationOptions new];
-    generationOptions.stripSynthesized = YES;
     
     IMP const blankIMP = imp_implementationWithBlock(^{ }); // returns void, takes no parameters
     
