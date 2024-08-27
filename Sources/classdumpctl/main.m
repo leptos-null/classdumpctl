@@ -460,7 +460,7 @@ int main(int argc, char *argv[]) {
     [[CDClassModel modelWithClass:NSClassFromString(@"NSObject")] semanticLinesWithOptions:generationOptions];
     [[CDProtocolModel modelWithProtocol:NSProtocolFromString(@"NSObject")] semanticLinesWithOptions:generationOptions];
     
-    if (hasImageRequests && (outputDir == nil)) {
+    if (hasImageRequests && !hasSpecificDumpRequests && (outputDir == nil)) {
         fprintf(stderr, "-o/--output required to dump all classes in an image\n");
         return 1;
     }
