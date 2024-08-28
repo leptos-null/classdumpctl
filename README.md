@@ -36,9 +36,11 @@ Options:
                                the specified directory, otherwise all classes found
                                are written to this directory at the top level
   -m <m>, --color=<m>        Set color settings, one of the below
-                               default: color output only if output is to a TTY
+                               default: color output using ASNI color escapes only if output is to a TTY
                                never: no output is colored
-                               always: output to TTYs, pipes, and files are colored
+                               always: color output to files, pipes, and TTYs using ASNI color escapes
+                               html-hljs: output in HTML format annotated with hljs classes
+                               html-lsp: output in HTML format annotated with LSP classes
   -i <p>, --image=<p>        Reference the mach-o image at path
                                by default, dump all classes in this image
                                otherwise may specify --class or --protocol
@@ -47,4 +49,22 @@ Options:
   -j <N>, --jobs=<N>         Allow N jobs at once
                                only applicable when specified with -a/--dyld_shared_cache
                                (defaults to number of processing core available)
+
+  --strip-protocol-conformance[=flag]    Hide properties and methods that are required
+                                           by a protocol the type conforms to
+                                           (defaults to false)
+  --strip-overrides[=flag]               Hide properties and methods that are inherited
+                                           from the class hierachy
+                                           (defaults to false)
+  --strip-duplicates[=flag]              Hide duplicate occurrences of a property or method
+                                           (defaults to false)
+  --strip-synthesized[=flag]             Hide methods and ivars that are synthesized from a property
+                                           (defaults to true)
+  --strip-ctor-method[=flag]             Hide `.cxx_construct` method
+                                           (defaults to false)
+  --strip-dtor-method[=flag]             Hide `.cxx_destruct` method
+                                           (defaults to false)
+  --add-symbol-comments[=flag]           Add comments above each eligible declaration
+                                           with the symbol name and image path the object is found in
+                                           (defaults to false)
 ```
