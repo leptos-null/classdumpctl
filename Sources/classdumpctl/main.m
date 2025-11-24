@@ -496,15 +496,25 @@ int main(int argc, char *argv[]) {
             unsigned int classCount = 0;
             const char **classNames = objc_copyClassNamesForImage(requestImage.fileSystemRepresentation, &classCount);
             for (unsigned int classIndex = 0; classIndex < classCount; classIndex++) {
+                const char *const className = classNames[classIndex];
                 if (listFlag) {
-                    printf("%s\n", classNames[classIndex]);
+                    printf("%s\n", className);
                     continue;
                 }
-                Class const cls = objc_getClass(classNames[classIndex]);
+                // this is the same method `NSStringFromClass` uses
+                NSString *const nsClassName = [[NSString alloc] initWithCString:className encoding:NSUTF8StringEncoding];
+                if (nsClassName == nil) {
+                    // these contain byte sequences that don't map to characters.
+                    // NSString doesn't seem to want to represent these sequences.
+                    // Since the header contents is broken anyway in this case, skip for now.
+                    NSLog(@"Skipping class with unsupported name: '%s'", className);
+                    continue;
+                }
+                Class const cls = objc_getClass(className);
                 CDClassModel *model = safelyGenerateModelForClass(cls, blankIMP);
                 CDSemanticString *semanticString = [model semanticLinesWithOptions:generationOptions];
                 NSString *lines = linesForSemanticStringColorMode(semanticString, outputColorMode, NO);
-                NSString *headerName = [NSStringFromClass(cls) stringByAppendingPathExtension:@"h"];
+                NSString *headerName = [nsClassName stringByAppendingPathExtension:@"h"];
                 
                 NSString *headerPath = [outputDir stringByAppendingPathComponent:headerName];
                 
@@ -668,7 +678,17 @@ int main(int argc, char *argv[]) {
                     unsigned int classCount = 0;
                     const char **classNames = objc_copyClassNamesForImage(imagePath.fileSystemRepresentation, &classCount);
                     for (unsigned int classIndex = 0; classIndex < classCount; classIndex++) {
-                        Class const cls = objc_getClass(classNames[classIndex]);
+                        const char *const className = classNames[classIndex];
+                        // this is the same method `NSStringFromClass` uses
+                        NSString *const nsClassName = [[NSString alloc] initWithCString:className encoding:NSUTF8StringEncoding];
+                        if (nsClassName == nil) {
+                            // these contain byte sequences that don't map to characters.
+                            // NSString doesn't seem to want to represent these sequences.
+                            // Since the header contents is broken anyway in this case, skip for now.
+                            NSLog(@"Skipping class with unsupported name: '%s'", className);
+                            continue;
+                        }
+                        Class const cls = objc_getClass(className);
                         // creating the model and generating the "lines" both use
                         // functions that grab the objc runtime lock, so putting either of
                         // these on another thread is not efficient, as they would just be blocked
@@ -679,7 +699,7 @@ int main(int argc, char *argv[]) {
                         CDSemanticString *semanticString = [model semanticLinesWithOptions:generationOptions];
                         
                         NSString *lines = linesForSemanticStringColorMode(semanticString, outputColorMode, NO);
-                        NSString *headerName = [NSStringFromClass(cls) stringByAppendingPathExtension:@"h"];
+                        NSString *headerName = [nsClassName stringByAppendingPathExtension:@"h"];
                         
                         dispatch_group_async(linesWriteGroup, linesWriteQueue, ^{
                             NSString *headerPath = [topDir stringByAppendingPathComponent:headerName];
