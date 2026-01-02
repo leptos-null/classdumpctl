@@ -611,61 +611,183 @@ int main(int argc, char *argv[]) {
         
         NSFileManager *const fileManager = NSFileManager.defaultManager;
         
-        if ([fileManager fileExistsAtPath:outputDir]) {
-            fprintf(stderr, "%s already exists\n", outputDir.fileSystemRepresentation);
-            return 1;
-        }
+//        if ([fileManager fileExistsAtPath:outputDir]) {
+//            fprintf(stderr, "%s already exists\n", outputDir.fileSystemRepresentation);
+//            return 1;
+//        }
         
-        NSMutableDictionary<NSNumber *, NSString *> *const pidToPath = [NSMutableDictionary dictionaryWithCapacity:maxJobs];
-        
-        NSUInteger activeJobs = 0;
-        NSUInteger badExitCount = 0;
-        NSUInteger finishedImageCount = 0;
+        NSSet *const skipPaths = [NSSet setWithArray:@[
+            @"/usr/lib/dyld",
+            /*
+             Superclass of CalUISuggestionsWindow at <addr> in /System/Library/PrivateFrameworks/CalendarUI.framework/Versions/A/CalendarUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/CalendarUI.framework/Versions/A/CalendarUI",
+            @"/System/Library/PrivateFrameworks/Safari.framework/Versions/A/Safari", // seems to load `CalendarUI`
+            @"/System/Library/PrivateFrameworks/SearchUI.framework/Versions/A/SearchUI", // seems to load `CalendarUI`
+            @"/System/Library/PrivateFrameworks/RemindersUICore.framework/Versions/A/RemindersUICore", // seems to load `CalendarUI`
+            @"/System/Library/PrivateFrameworks/SocialUI.framework/Versions/A/SocialUI", // seems to load `CalendarUI`
+            @"/System/Library/PrivateFrameworks/CalendarIntegrationSupport.framework/Versions/A/CalendarIntegrationSupport", // seems to load `CalendarUI`
+            @"/System/Library/PrivateFrameworks/CalendarLink.framework/Versions/A/CalendarLink", // seems to load `CalendarUI`
+            @"/System/Library/PrivateFrameworks/CalendarUIKitInternal.framework/Versions/A/CalendarUIKitInternal", // seems to load `CalendarUI`
+            @"/System/Library/PrivateFrameworks/RemindersIntentsFramework.framework/Versions/A/RemindersIntentsFramework", // seems to load `CalendarUI`
+            @"/System/Library/PrivateFrameworks/SiriNotebookUI.framework/Versions/A/SiriNotebookUI", // seems to load `CalendarUI`
+            /*
+             Superclass of MUIAppleIntelligenceOnboardingViewController at <addr> in /System/Library/PrivateFrameworks/MailUI.framework/Versions/A/MailUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/MailUI.framework/Versions/A/MailUI",
+            /*
+             Superclass of ILMediaBrowserMovieView at <addr> in /System/Library/PrivateFrameworks/iLifeMediaBrowser.framework/Versions/A/iLifeMediaBrowser is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/Frameworks/ScreenSaver.framework/Versions/A/ScreenSaver",
+            /*
+             Superclass of SiriUIBuddyGMEnrollmentSplashView at <addr> in /System/Library/PrivateFrameworks/SiriUI.framework/Versions/A/SiriUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/SiriUI.framework/Versions/A/SiriUI",
+            /*
+             Superclass of ILMediaBrowserMovieView at <addr> in /System/Library/PrivateFrameworks/iLifeMediaBrowser.framework/Versions/A/iLifeMediaBrowser is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/iLifeMediaBrowser.framework/Versions/A/iLifeMediaBrowser",
+            /*
+             Superclass of ASBackgroundAssetConsentViewController at <addr> in /System/Library/PrivateFrameworks/AppStoreUI.framework/Versions/A/AppStoreUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/AppStoreKit.framework/Versions/A/AppStoreKit",
+            /* Assertion failed: (platformBinary), function +[WFActionKitStaticInitializer load], file ActionKit.m, line 49. */
+            @"/System/Library/PrivateFrameworks/ActionKit.framework/Versions/A/ActionKit",
+            /* Assertion failed: (platformBinary), function +[WFActionKitStaticInitializer load], file ActionKit.m, line 49. */
+            @"/System/Library/PrivateFrameworks/ActionKitUI.framework/Versions/A/ActionKitUI",
+            /*
+             Superclass of CalUISuggestionsWindow at <addr> in /System/Library/PrivateFrameworks/CalendarUI.framework/Versions/A/CalendarUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/AppPredictionUI.framework/Versions/A/AppPredictionUI",
+            /*
+             Superclass of ASBackgroundAssetConsentViewController at <addr> in /System/Library/PrivateFrameworks/AppStoreUI.framework/Versions/A/AppStoreUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/AppStoreUI.framework/Versions/A/AppStoreUI",
+            /*
+             Superclass of BKUIFingerprintEnrollBuddyClientAdapterView at <addr> in /System/Library/PrivateFrameworks/BiometricKitUI.framework/Versions/A/BiometricKitUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/BiometricKitUI.framework/Versions/A/BiometricKitUI",
+            /*
+             Superclass of ASBackgroundAssetConsentViewController at <addr> in /System/Library/PrivateFrameworks/AppStoreUI.framework/Versions/A/AppStoreUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/GameStoreKit.framework/Versions/A/GameStoreKit",
+            /*
+             Superclass of SearchUIPersonHeaderViewController at <addr> in /System/Library/PrivateFrameworks/SearchUI.framework/Versions/A/SearchUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/IntelligenceFlowAppIntentsPreviewToolSupport.framework/Versions/A/IntelligenceFlowAppIntentsPreviewToolSupport",
+            /*
+             Superclass of SearchUIPersonHeaderViewController at <addr> in /System/Library/PrivateFrameworks/SearchUI.framework/Versions/A/SearchUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/IntelligenceFlowContextRuntime.framework/Versions/A/IntelligenceFlowContextRuntime",
+            /*
+             Superclass of SearchUIPersonHeaderViewController at <addr> in /System/Library/PrivateFrameworks/SearchUI.framework/Versions/A/SearchUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/IntelligenceFlowFeedbackDataCollector.framework/Versions/A/IntelligenceFlowFeedbackDataCollector",
+            /*
+             Superclass of SearchUIPersonHeaderViewController at <addr> in /System/Library/PrivateFrameworks/SearchUI.framework/Versions/A/SearchUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/IntelligenceFlowPlannerRuntime.framework/Versions/A/IntelligenceFlowPlannerRuntime",
+            /*
+             Superclass of SearchUIPersonHeaderViewController at <addr> in /System/Library/PrivateFrameworks/SearchUI.framework/Versions/A/SearchUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/IntelligenceFlowPlannerSupport.framework/Versions/A/IntelligenceFlowPlannerSupport",
+            /*
+             Superclass of SearchUIPersonHeaderViewController at <addr> in /System/Library/PrivateFrameworks/SearchUI.framework/Versions/A/SearchUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/IntelligenceFlowRuntime.framework/Versions/A/IntelligenceFlowRuntime",
+            /*
+             Superclass of CalUISuggestionsWindow at <addr> in /System/Library/PrivateFrameworks/CalendarUI.framework/Versions/A/CalendarUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/OmniSearch.framework/Versions/A/OmniSearch",
+            /*
+             Superclass of CalUISuggestionsWindow at <addr> in /System/Library/PrivateFrameworks/CalendarUI.framework/Versions/A/CalendarUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/OmniSearchClient.framework/Versions/A/OmniSearchClient",
+            /*
+             Superclass of CalUISuggestionsWindow at <addr> in /System/Library/PrivateFrameworks/CalendarUI.framework/Versions/A/CalendarUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/OnDeviceEvalRuntime.framework/Versions/A/OnDeviceEvalRuntime",
+            /*
+             Superclass of PMCredentialRequestPaneHeader at <addr> in /System/Library/PrivateFrameworks/PasswordManagerUI.framework/Versions/A/PasswordManagerUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/PasswordManagerUI.framework/Versions/A/PasswordManagerUI",
+            /*
+             Superclass of CalUISuggestionsWindow at <addr> in /System/Library/PrivateFrameworks/CalendarUI.framework/Versions/A/CalendarUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/PersonalSearchService.framework/Versions/A/PersonalSearchService",
+            /*
+             Superclass of CalUISuggestionsWindow at <addr> in /System/Library/PrivateFrameworks/CalendarUI.framework/Versions/A/CalendarUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/RemindersAppIntents.framework/Versions/A/RemindersAppIntents",
+            /*
+             Superclass of SearchUIPersonHeaderViewController at <addr> in /System/Library/PrivateFrameworks/SearchUI.framework/Versions/A/SearchUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/Safari.framework/Versions/A/PlugIns/Safari.wkbundle/Contents/MacOS/Safari",
+            /*
+             Superclass of SearchUIPersonHeaderViewController at <addr> in /System/Library/PrivateFrameworks/SearchUI.framework/Versions/A/SearchUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/SearchUICardKitProviderSupport.framework/Versions/A/SearchUICardKitProviderSupport",
+            /*
+             Class of category SetupAssistantSupportUI at <addr> in ?? is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/SetupAssistantSupportUI.framework/Versions/A/SetupAssistantSupportUI",
+            /*
+             Superclass of SearchUIPersonHeaderViewController at 0x1f90e54a0 in /System/Library/PrivateFrameworks/SearchUI.framework/Versions/A/SearchUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/SiriAppLaunchUIFramework.framework/Versions/A/SiriAppLaunchUIFramework",
+            /*
+             Superclass of CalUISuggestionsWindow at 0x1f8282378 in /System/Library/PrivateFrameworks/CalendarUI.framework/Versions/A/CalendarUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/SiriNotebook.framework/Versions/A/SiriNotebook",
+            /*
+             Superclass of SiriUIBuddyGMEnrollmentSplashView at 0x1f930d790 in /System/Library/PrivateFrameworks/SiriUI.framework/Versions/A/SiriUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/SiriSetup.framework/Versions/A/SiriSetup",
+            /*
+             Superclass of SearchUIPersonHeaderViewController at 0x1f90e54a0 in /System/Library/PrivateFrameworks/SearchUI.framework/Versions/A/SearchUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/SpotlightUIShared.framework/Versions/A/SpotlightUIShared",
+            /*
+             Superclass of VUIAVPlayerView at 0x2a39c5980 in /System/Library/PrivateFrameworks/VideosUI.framework/Versions/A/VideosUI is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/VideosUI.framework/Versions/A/VideosUI",
+            /*
+             Superclass of Welcome.CustomizedAVPlayerView at 0x2a3a2a580 in /System/Library/PrivateFrameworks/Welcome.framework/Versions/A/Welcome is set to 0xbad4007, indicating it is missing from an installed root
+             */
+            @"/System/Library/PrivateFrameworks/Welcome.framework/Versions/A/Welcome",
+            /* Assertion failed: (platformBinary), function +[WFActionKitStaticInitializer load], file ActionKit.m, line 49. */
+            @"/System/Library/PrivateFrameworks/WorkflowUI.framework/Versions/A/WorkflowUI",
+            /* Invalid dylib load. Clients should not load the unversioned libcrypto dylib as it does not have a stable ABI. */
+            @"/usr/lib/libcrypto.dylib",
+            /* Invalid dylib load. Clients should not load the unversioned libssl dylib as it does not have a stable ABI. */
+            @"/usr/lib/libssl.dylib",
+            /* Assertion failed: (platformBinary), function +[WFActionKitStaticInitializer load], file ActionKit.m, line 49. */
+            @"/System/iOSSupport/System/Library/PrivateFrameworks/ActionKit.framework/Versions/A/ActionKit",
+            /* Assertion failed: (platformBinary), function +[WFActionKitStaticInitializer load], file ActionKit.m, line 49. */
+            @"/System/iOSSupport/System/Library/PrivateFrameworks/ActionKitUI.framework/Versions/A/ActionKitUI",
+            /* Assertion failed: (platformBinary), function +[WFActionKitStaticInitializer load], file ActionKit.m, line 49. */
+            @"/System/iOSSupport/System/Library/PrivateFrameworks/WorkflowUI.framework/Versions/A/WorkflowUI",
+            /* Exception thrown while decoding class BSAuditToken for key "_bsAuditToken": +[BSAuditToken supportsSecureCoding]: unrecognized selector sent to class 0x1f8034058 */
+            @"/System/Library/PrivateFrameworks/PreviewsInjection.framework/Versions/A/PreviewsInjection",
+            @"/System/iOSSupport/System/Library/PrivateFrameworks/PreviewsInjection.framework/Versions/A/PreviewsInjection",
+            
+            /* -[__NSSetM removeObject:]: object cannot be nil */
+            // @"/System/Library/PrivateFrameworks/AOSUI.framework/Versions/A/AOSUI", // TODO: investigate (in `_forwardDeclarableClassReferences`)
+            
+            // not sure
+            @"/System/Library/PrivateFrameworks/UnifiedMessagingKit.framework/Versions/A/UnifiedMessagingKit",
+        ]];
         
         NSUInteger const imagePathCount = imagePaths.count;
-        for (NSUInteger imageIndex = 0; (imageIndex < imagePathCount) || (activeJobs > 0); imageIndex++) {
-            BOOL const hasImagePath = (imageIndex < imagePathCount);
-            
-            if (!hasImagePath || (activeJobs >= maxJobs)) {
-                int childStatus = 0;
-                pid_t const childPid = wait(&childStatus);
-                activeJobs--;
-                
-                if (childPid < 0) {
-                    perror("wait");
-                    return 1;
-                }
-                NSNumber *key = @(childPid);
-                NSString *path = pidToPath[key];
-                [pidToPath removeObjectForKey:key];
-                finishedImageCount++;
-                
-                if (WIFEXITED(childStatus)) {
-                    int const exitStatus = WEXITSTATUS(childStatus);
-                    if (exitStatus != 0) {
-                        printf("Child for '%s' exited with status %d\n", path.fileSystemRepresentation, exitStatus);
-                        badExitCount++;
-                    }
-                } else if (WIFSIGNALED(childStatus)) {
-                    printf("Child for '%s' signaled with signal %d\n", path.fileSystemRepresentation, WTERMSIG(childStatus));
-                    badExitCount++;
-                } else {
-                    printf("Child for '%s' did not finish cleanly\n", path.fileSystemRepresentation);
-                    badExitCount++;
-                }
-                printf("  %lu/%lu\r", finishedImageCount, imagePathCount);
-                fflush(stdout); // important to flush after using '\r', but also critical to flush (if needed) before calling `fork`
-            }
-            if (hasImagePath) {
+        for (NSUInteger imageIndex = 0; imageIndex < imagePathCount; imageIndex++) {
                 NSString *imagePath = imagePaths[imageIndex];
-                
-                pid_t const forkStatus = fork();
-                if (forkStatus < 0) {
-                    perror("fork");
-                    return 1;
-                }
-                if (forkStatus == 0) {
-                    // child
+                    
+                    if ([skipPaths containsObject:imagePath]) {
+                        NSLog(@"Skipping (%lu) %@", imageIndex, imagePath);
+                        continue;
+                    }
+                    NSLog(@"Processing (%lu) %@", imageIndex, imagePath);
+                    
                     NSString *topDir = [outputDir stringByAppendingPathComponent:imagePath];
                     
                     NSError *error = nil;
@@ -673,12 +795,6 @@ int main(int argc, char *argv[]) {
                         NSLog(@"createDirectoryAtPathError: %@", error);
                         return 1;
                     }
-                    NSString *logPath = [topDir stringByAppendingPathComponent:@"log.txt"];
-                    
-                    int const logHandle = open(logPath.fileSystemRepresentation, O_WRONLY | O_CREAT | O_EXCL, 0644);
-                    assert(logHandle >= 0);
-                    dup2(logHandle, STDOUT_FILENO);
-                    dup2(logHandle, STDERR_FILENO);
                     
                     dlerror(); // clear
                     void *imageHandle = dlopen(imagePath.fileSystemRepresentation, RTLD_NOW);
@@ -737,20 +853,7 @@ int main(int argc, char *argv[]) {
                     
                     free(classNames);
                     dlclose(imageHandle);
-                    
-                    close(logHandle);
-                    unlink(logPath.fileSystemRepresentation);
-                    
-                    return 0; // exit child process
-                }
-                
-                pidToPath[@(forkStatus)] = imagePath;
-                activeJobs++;
-            }
         }
-        
-        printf("%lu images in dyld_shared_cache\n", (unsigned long)imagePaths.count);
-        printf("Failed to load %lu images\n", (unsigned long)badExitCount);
     }
     return 0;
 }
