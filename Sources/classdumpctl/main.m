@@ -84,9 +84,16 @@ static void printUsage(const char *progname) {
            "", progname);
 }
 
-static CDClassModel *safelyGenerateModelForClass(Class const cls, IMP const blankIMP) {
+static CDClassModel *safelyGenerateModelForClass(Class const cls, IMP const blankIMP, Method const safeInitializeMethod) {
     Method const initializeMthd = class_getClassMethod(cls, @selector(initialize));
-    method_setImplementation(initializeMthd, blankIMP);
+    // `method_setImplementation` is (relatively) expensive, in my testing (on macOS 26.1)
+    //   adding these checks improves performance by about 3 times
+    if (initializeMthd != safeInitializeMethod) {
+        IMP methodIMP = method_getImplementation(initializeMthd);
+        if (methodIMP != blankIMP) {
+            method_setImplementation(initializeMthd, blankIMP);
+        }
+    }
     
     return [CDClassModel modelWithClass:cls];
 }
@@ -455,6 +462,7 @@ int main(int argc, char *argv[]) {
     }
     
     IMP const blankIMP = imp_implementationWithBlock(^{ }); // returns void, takes no parameters
+    Method const safeInitializeMethod = class_getClassMethod([NSObject class], @selector(initialize));
     
     // just doing this once before we potentially delete some class initializers
     [[CDClassModel modelWithClass:NSClassFromString(@"NSObject")] semanticLinesWithOptions:generationOptions];
@@ -511,7 +519,7 @@ int main(int argc, char *argv[]) {
                     continue;
                 }
                 Class const cls = objc_getClass(className);
-                CDClassModel *model = safelyGenerateModelForClass(cls, blankIMP);
+                CDClassModel *model = safelyGenerateModelForClass(cls, blankIMP, safeInitializeMethod);
                 CDSemanticString *semanticString = [model semanticLinesWithOptions:generationOptions];
                 NSString *lines = linesForSemanticStringColorMode(semanticString, outputColorMode, NO);
                 NSString *headerName = [nsClassName stringByAppendingPathExtension:@"h"];
@@ -535,7 +543,7 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Class named %s not found\n", requestClassName.UTF8String);
             continue;
         }
-        CDClassModel *model = safelyGenerateModelForClass(cls, blankIMP);
+        CDClassModel *model = safelyGenerateModelForClass(cls, blankIMP, safeInitializeMethod);
         if (model == nil) {
             fprintf(stderr, "Unable to message class named %s\n", requestClassName.UTF8String);
             continue;
@@ -692,7 +700,7 @@ int main(int argc, char *argv[]) {
                         // creating the model and generating the "lines" both use
                         // functions that grab the objc runtime lock, so putting either of
                         // these on another thread is not efficient, as they would just be blocked
-                        CDClassModel *model = safelyGenerateModelForClass(cls, blankIMP);
+                        CDClassModel *model = safelyGenerateModelForClass(cls, blankIMP, safeInitializeMethod);
                         if (model == nil) {
                             continue;
                         }
