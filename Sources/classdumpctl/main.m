@@ -518,7 +518,19 @@ int main(int argc, char *argv[]) {
                     NSLog(@"Skipping class with unsupported name: '%s'", className);
                     continue;
                 }
-                Class const cls = objc_getClass(className);
+                Class cls = objc_getClass(className);
+                if (cls == NULL) {
+                    // Observed consistently for `AOSUIOBTemplateContainerViewController` on macOS 26.1
+                    // (not able to reproduce with debugger attached)
+                    // `objc_getClass("AOSUIOBTemplateContainerViewController")` returned
+                    //   `NULL` on first call, and successfully on second try
+                    cls = objc_getClass(className);
+                    
+                    if (cls == NULL) {
+                        NSLog(@"Unable to find class named '%s' (expected in '%@')", className, requestImage);
+                        continue;
+                    }
+                }
                 CDClassModel *model = safelyGenerateModelForClass(cls, blankIMP, safeInitializeMethod);
                 CDSemanticString *semanticString = [model semanticLinesWithOptions:generationOptions];
                 NSString *lines = linesForSemanticStringColorMode(semanticString, outputColorMode, NO);
@@ -696,14 +708,20 @@ int main(int argc, char *argv[]) {
                             NSLog(@"Skipping class with unsupported name: '%s'", className);
                             continue;
                         }
-                        Class const cls = objc_getClass(className);
-                        // creating the model and generating the "lines" both use
-                        // functions that grab the objc runtime lock, so putting either of
-                        // these on another thread is not efficient, as they would just be blocked
-                        CDClassModel *model = safelyGenerateModelForClass(cls, blankIMP, safeInitializeMethod);
-                        if (model == nil) {
-                            continue;
+                        Class cls = objc_getClass(className);
+                        if (cls == NULL) {
+                            // Observed consistently for `AOSUIOBTemplateContainerViewController` on macOS 26.1
+                            // (not able to reproduce with debugger attached)
+                            // `objc_getClass("AOSUIOBTemplateContainerViewController")` returned
+                            //   `NULL` on first call, and successfully on second try
+                            cls = objc_getClass(className);
+                            
+                            if (cls == NULL) {
+                                NSLog(@"Unable to find class named '%s' (expected in '%@')", className, imagePath);
+                                continue;
+                            }
                         }
+                        CDClassModel *model = safelyGenerateModelForClass(cls, blankIMP, safeInitializeMethod);
                         CDSemanticString *semanticString = [model semanticLinesWithOptions:generationOptions];
                         
                         NSString *lines = linesForSemanticStringColorMode(semanticString, outputColorMode, NO);
