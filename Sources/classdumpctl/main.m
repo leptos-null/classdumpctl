@@ -357,9 +357,9 @@ int main(int argc, char *argv[]) {
                 struct option const *const option = options + optionIndex;
                 // test if we want to consume the next argument.
                 //   `optional_argument` only provides `optarg` if the
-                //   command line paramter is in the format "--name=value",
+                //   command line parameter is in the format "--name=value",
                 //   this code allows us to consume "--name" "value".
-                //   We have to validate "value", otherwise we might accidently
+                //   We have to validate "value", otherwise we might accidentally
                 //   consume "--name" "--flag"
                 if (optarg == NULL && optind < argc) {
                     int const parse = parseOptargBool(argv[optind]);
