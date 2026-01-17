@@ -54,7 +54,7 @@ Options:
                                            by a protocol the type conforms to
                                            (defaults to false)
   --strip-overrides[=flag]               Hide properties and methods that are inherited
-                                           from the class hierachy
+                                           from the class hierarchy
                                            (defaults to false)
   --strip-duplicates[=flag]              Hide duplicate occurrences of a property or method
                                            (defaults to false)
@@ -66,5 +66,7 @@ Options:
                                            (defaults to false)
   --add-symbol-comments[=flag]           Add comments above each eligible declaration
                                            with the symbol name and image path the object is found in
+                                           (defaults to false)
+  --expand-ivar-records[=flag]           Expand ivar struct or union declarations to multiple lines
                                            (defaults to false)
 ```

@@ -32,6 +32,7 @@ typedef NS_ENUM(NSUInteger, CDOptionBoolValue) {
     CDOptionBoolValueStripCtorMethod,
     CDOptionBoolValueStripDtorMethod,
     CDOptionBoolValueAddSymbolImageComments,
+    CDOptionBoolValueExpandIvarRecordTypes,
     
     CDOptionBoolValueCaseEnd
 };
@@ -68,7 +69,7 @@ static void printUsage(const char *progname) {
            "                                           by a protocol the type conforms to\n"
            "                                           (defaults to false)\n"
            "  --strip-overrides[=flag]               Hide properties and methods that are inherited\n"
-           "                                           from the class hierachy\n"
+           "                                           from the class hierarchy\n"
            "                                           (defaults to false)\n"
            "  --strip-duplicates[=flag]              Hide duplicate occurrences of a property or method\n"
            "                                           (defaults to false)\n"
@@ -80,6 +81,8 @@ static void printUsage(const char *progname) {
            "                                           (defaults to false)\n"
            "  --add-symbol-comments[=flag]           Add comments above each eligible declaration\n"
            "                                           with the symbol name and image path the object is found in\n"
+           "                                           (defaults to false)\n"
+           "  --expand-ivar-records[=flag]           Expand ivar struct or union declarations to multiple lines\n"
            "                                           (defaults to false)\n"
            "", progname);
 }
@@ -339,6 +342,7 @@ int main(int argc, char *argv[]) {
         { "strip-ctor-method",          optional_argument, NULL, CDOptionBoolValueStripCtorMethod          },
         { "strip-dtor-method",          optional_argument, NULL, CDOptionBoolValueStripDtorMethod          },
         { "add-symbol-comments",        optional_argument, NULL, CDOptionBoolValueAddSymbolImageComments   },
+        { "expand-ivar-records",        optional_argument, NULL, CDOptionBoolValueExpandIvarRecordTypes    },
         
         { NULL, 0, NULL, 0 }
     };
@@ -353,7 +357,8 @@ int main(int argc, char *argv[]) {
             case CDOptionBoolValueStripSynthesized:
             case CDOptionBoolValueStripCtorMethod:
             case CDOptionBoolValueStripDtorMethod:
-            case CDOptionBoolValueAddSymbolImageComments: {
+            case CDOptionBoolValueAddSymbolImageComments:
+            case CDOptionBoolValueExpandIvarRecordTypes: {
                 struct option const *const option = options + optionIndex;
                 // test if we want to consume the next argument.
                 //   `optional_argument` only provides `optarg` if the
@@ -397,6 +402,9 @@ int main(int argc, char *argv[]) {
                         break;
                     case CDOptionBoolValueAddSymbolImageComments:
                         generationOptions.addSymbolImageComments = flag;
+                        break;
+                    case CDOptionBoolValueExpandIvarRecordTypes:
+                        generationOptions.expandIvarRecordTypes = flag;
                         break;
                     default:
                         break;
