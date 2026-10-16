@@ -6,6 +6,8 @@ on:
 jobs:
   build:
     runs-on: macos-26
+    env:
+      THEOS: theos
     steps:
       - name: Checkout repo
         uses: actions/checkout@v7
@@ -17,11 +19,9 @@ jobs:
         with:
           repository: theos/theos
           submodules: recursive
-          path: theos
+          path: ${{ env.THEOS }}
 
       - name: Build with Theos
-        env:
-          THEOS: theos
         run: |
           # we probably don't have `ldid`, so skip codesign
           # https://github.com/theos/theos/pull/786
