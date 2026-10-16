@@ -700,8 +700,15 @@ int main(int argc, char *argv[]) {
                     
                     // use a group so we can make sure all the work items finish before we exit the program
                     dispatch_group_t const linesWriteGroup = dispatch_group_create();
+                    
+                    intptr_t linesWriteQueueIdentifier;
+                    if (@available(macOS 10.10, iOS 8.0, *)) {
+                        linesWriteQueueIdentifier = QOS_CLASS_USER_INITIATED;
+                    } else {
+                        linesWriteQueueIdentifier = DISPATCH_QUEUE_PRIORITY_HIGH;
+                    }
                     // perform file system writes on another thread so we don't unnecessarily block our CPU work
-                    dispatch_queue_t const linesWriteQueue = dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0);
+                    dispatch_queue_t const linesWriteQueue = dispatch_get_global_queue(linesWriteQueueIdentifier, 0);
                     
                     unsigned int classCount = 0;
                     const char **classNames = objc_copyClassNamesForImage(imagePath.fileSystemRepresentation, &classCount);
