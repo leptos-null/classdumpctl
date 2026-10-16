@@ -21,6 +21,10 @@ jobs:
           submodules: recursive
           path: ${{ env.THEOS }}
 
+      - name: Install Theos iOS 16.5 SDK
+        run: |
+          curl -sSL 'https://github.com/theos/sdks/releases/download/master-146e41f/iPhoneOS16.5.sdk.tar.xz' | tar -xJ -C "${THEOS}/sdks"
+
       - name: Build with Theos
         run: |
           # we probably don't have `ldid`, so skip codesign

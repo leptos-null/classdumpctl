@@ -661,7 +661,7 @@ int main(int argc, char *argv[]) {
                     printf("Child for '%s' did not finish cleanly\n", path.fileSystemRepresentation);
                     badExitCount++;
                 }
-                printf("  %lu/%lu\r", finishedImageCount, imagePathCount);
+                printf("  %lu/%lu\r", (unsigned long)finishedImageCount, (unsigned long)imagePathCount);
                 fflush(stdout); // important to flush after using '\r', but also critical to flush (if needed) before calling `fork`
             }
             if (hasImagePath) {

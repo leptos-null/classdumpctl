@@ -1,5 +1,8 @@
-TARGET := iphone:clang:latest:8.0
-ARCHS := arm64
+# The Theos SDKs are patched to support building for armv7
+# even after the Xcode versions stopped shipping armv7 slices.
+# At the time of writing, 16.5 is the latest iOS SDK that Theos provides.
+TARGET := iphone:clang:16.5:6.0
+ARCHS := armv7 arm64
 
 include $(THEOS)/makefiles/common.mk
 
